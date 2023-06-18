@@ -10,12 +10,12 @@ import (
 func TestFields(t *testing.T) {
 	fields := []Field{
 		{
-			Key:   "key-1",
-			Value: 1,
-		},
-		{
 			Key:   "key-2",
 			Value: 2,
+		},
+		{
+			Key:   "key-1",
+			Value: 1,
 		},
 	}
 
@@ -24,5 +24,6 @@ func TestFields(t *testing.T) {
 	assert.Equal(t, fields, FromCtx(ctx))
 
 	ctx = WithFields(ctx, Field{"key-3", 3}, Field{"key-1", 5})
-	assert.Equal(t, append(fields, Field{"key-3", 3}), FromCtx(ctx))
+	fields[1].Value = 5
+	assert.ElementsMatch(t, append(fields, Field{"key-3", 3}), FromCtx(ctx))
 }

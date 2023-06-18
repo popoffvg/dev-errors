@@ -2,7 +2,6 @@ package fields
 
 import (
 	"context"
-	"strings"
 
 	"golang.org/x/exp/slices"
 )
@@ -26,15 +25,29 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 	}
 
 	fs := FromCtx(ctx)
-	fs = append(fs, fields...)
-	slices.SortFunc(fs, func(a, b Field) bool {
-		return strings.Compare(a.Key, b.Key) < 0
-	})
-	fs = slices.CompactFunc(fs, func(f1, f2 Field) bool {
-		return f1.Key == f2.Key
-	})
 
-	return context.WithValue(ctx, fieldsCtxKey, fs)
+	var (
+		wasCopied bool
+		result    = fs
+	)
+	for _, f := range fields {
+		j := slices.IndexFunc(result, func(v Field) bool {
+			return v.Key == f.Key
+		})
+		if j != -1 {
+			if !wasCopied {
+				tmp := make([]Field, len(result))
+				copy(tmp, result)
+				result = tmp
+			}
+			result[j] = f
+			continue
+		}
+
+		result = append(result, f)
+	}
+
+	return context.WithValue(ctx, fieldsCtxKey, result)
 }
 
 func FromCtx(ctx context.Context) []Field {

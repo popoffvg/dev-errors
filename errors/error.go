@@ -4,14 +4,16 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/popoffvg/dev-errors/fields"
+	"github.com/popoffvg/dev-errors/internal/buffer"
 	"github.com/popoffvg/dev-errors/internal/bufferpool"
 )
 
 type (
 	ExtendedError struct {
-		f *stacktrace
+		stack *stacktrace
 
 		causes []error
 		msg    string
@@ -19,17 +21,22 @@ type (
 	}
 )
 
-// New create new error with stack according to stack strategy
-// without field from context.
+// New create new error.
+//
+// Stack will capture if captureStack option is used.
 func New(msg string, args ...any) error {
-	return NewCtx(context.Background(), msg, args...)
+	return newErr(context.Background(), msg, args...)
 }
 
-// New create new error with stack according to stack strategy
-// with field from context.
+// NewCtx create new error.
 //
-// If error with frame exists in args then frame will not be added.
+// Stack will capture if captureStack option is used.
+// Fields from context will added to error if addField option is used.
 func NewCtx(ctx context.Context, msg string, args ...any) error {
+	return newErr(ctx, msg, args...)
+}
+
+func newErr(ctx context.Context, msg string, args ...any) error {
 	var (
 		causes []error
 
@@ -37,87 +44,95 @@ func NewCtx(ctx context.Context, msg string, args ...any) error {
 		causeWithStack = new(ExtendedError)
 	)
 
-	if withStack {
+	if opts.withStack {
 		for _, v := range args {
 			if e, ok := v.(error); ok {
 				causes = append(causes, e)
-				if !hasStack && errors.As(e, &causeWithStack) && causeWithStack.f != nil {
+				if !hasStack && errors.As(e, &causeWithStack) && causeWithStack.stack != nil {
 					hasStack = true
 				}
 			}
 		}
 	}
 
-	return &ExtendedError{
-		f: func() *stacktrace {
-			if hasStack || !withStack {
+	return applyHook(&ExtendedError{
+		stack: func() *stacktrace {
+			if hasStack || !opts.withStack {
 				return nil
 			}
 
-			f := captureStacktrace(2, stacktraceFull)
+			f := captureStacktrace(3, stacktraceFull)
 			return f
 		}(),
 		causes: causes,
 		msg:    fmt.Sprintf(msg, args...),
 		fields: fields.FromCtx(ctx),
-	}
+	})
 }
 
-func (e *ExtendedError) Unwrap() error {
+func applyHook(e *ExtendedError) error {
+	if opts.hook == nil {
+		return e
+	}
+
+	return opts.hook(e)
+}
+
+func (e *ExtendedError) Unwrap() []error {
 	if len(e.causes) == 0 {
 		return nil
 	}
 
-	return e.causes[len(e.causes)-1]
+	return e.causes
 }
 
 func (e *ExtendedError) Error() string {
-	var buf = bufferpool.Get()
-	// TODO:: (popoffvg) custom printer
-
-	buf.WriteString("msg:")
-	buf.WriteString(e.msg)
-	buf.WriteString("\n")
-
-	if len(e.fields) > 0 {
-		buf.WriteString("fields:")
-	}
-	for _, f := range e.fields {
-		buf.WriteString("\t")
-		buf.WriteString(f.Key)
-		buf.WriteString(":")
-		// TODO:: (popoffvg) optimize
-		buf.WriteString(fmt.Sprintf("%+v\n", f.Value))
-	}
-
-	if withStack {
-		f := e.frame()
-		if f != nil {
-			buf.WriteString("stack:\n")
-			formatter := newStackFormatter(buf)
-			formatter.FormatStack(f)
-			buf.WriteString("\n")
-		}
-	}
-
-	return buf.String()
+	return opts.printer.Print(e.msg, e.frames(), e.Fields())
 }
 
 func (e *ExtendedError) Fields() []fields.Field {
 	return e.fields
 }
 
-func (e *ExtendedError) frame() *stacktrace {
-	if e.f != nil {
-		return e.f
-	}
+func (e *ExtendedError) Stacktrace() string {
+	var buf = bufferpool.Get()
+	writeStack(buf, e.frames())
+	return buf.String()
+}
 
-	var subErr *ExtendedError
-	for _, v := range e.causes {
-		if errors.As(v, &subErr) {
-			return subErr.frame()
+func writeStack(buf *buffer.Buffer, stack []*stacktrace) {
+	formatter := newStackFormatter(buf)
+	for i, v := range stack {
+		if i != 0 {
+			buf.WriteString("\n\n" + strings.Repeat("-", 20) + "\n")
 		}
+		formatter.FormatStack(v)
+	}
+}
+
+func (e *ExtendedError) frames() (r []*stacktrace) {
+	if e.stack != nil {
+		return []*stacktrace{e.stack}
 	}
 
-	return nil
+	for _, c := range e.causes {
+		r = append(r, frames(c)...)
+	}
+
+	return r
+}
+
+func frames(err error) (r []*stacktrace) {
+	switch x := err.(type) {
+	case *ExtendedError:
+		r = append(r, x.frames()...)
+	case interface{ Unwrap() []error }:
+		for _, v := range x.Unwrap() {
+			r = append(r, frames(v)...)
+		}
+	case interface{ Unwrap() error }:
+		r = append(r, frames(x.Unwrap())...)
+	}
+
+	return r
 }
