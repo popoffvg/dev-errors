@@ -26,13 +26,13 @@ func SetOptions(newOpts ...option) {
 	}
 }
 
-func WithStack(val bool) option {
+func EnableStack(val bool) option {
 	return func(opts options) {
 		opts.withStack = val
 	}
 }
 
-func WithFields(val bool) option {
+func EnableFields(val bool) option {
 	return func(opts options) {
 		opts.withFields = val
 	}

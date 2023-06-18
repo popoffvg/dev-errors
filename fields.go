@@ -1,4 +1,4 @@
-package fields
+package errors
 
 import (
 	"context"

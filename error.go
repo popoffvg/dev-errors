@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/popoffvg/dev-errors/fields"
 	"github.com/popoffvg/dev-errors/internal/buffer"
 	"github.com/popoffvg/dev-errors/internal/bufferpool"
 )
@@ -17,7 +16,7 @@ type (
 
 		causes []error
 		msg    string
-		fields []fields.Field
+		fields []Field
 	}
 )
 
@@ -66,7 +65,7 @@ func newErr(ctx context.Context, msg string, args ...any) error {
 		}(),
 		causes: causes,
 		msg:    fmt.Sprintf(msg, args...),
-		fields: fields.FromCtx(ctx),
+		fields: FromCtx(ctx),
 	})
 }
 
@@ -90,7 +89,7 @@ func (e *ExtendedError) Error() string {
 	return opts.printer.Print(e.msg, e.frames(), e.Fields())
 }
 
-func (e *ExtendedError) Fields() []fields.Field {
+func (e *ExtendedError) Fields() []Field {
 	return e.fields
 }
 

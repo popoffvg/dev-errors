@@ -3,13 +3,12 @@ package errors
 import (
 	"fmt"
 
-	"github.com/popoffvg/dev-errors/fields"
 	"github.com/popoffvg/dev-errors/internal/bufferpool"
 )
 
 type (
 	printer interface {
-		Print(msg string, stack []*stacktrace, fs []fields.Field) string
+		Print(msg string, stack []*stacktrace, fs []Field) string
 	}
 
 	defaultPrinter struct{}
@@ -17,11 +16,11 @@ type (
 	verbosePrinter struct{}
 )
 
-func (p *defaultPrinter) Print(msg string, stack []*stacktrace, fs []fields.Field) string {
+func (p *defaultPrinter) Print(msg string, stack []*stacktrace, fs []Field) string {
 	return msg
 }
 
-func (p *verbosePrinter) Print(msg string, stack []*stacktrace, fs []fields.Field) string {
+func (p *verbosePrinter) Print(msg string, stack []*stacktrace, fs []Field) string {
 	var buf = bufferpool.Get()
 
 	buf.WriteString("msg:")
