@@ -22,20 +22,20 @@ type (
 
 // New create new error.
 //
-// Stack will capture if captureStack option is used.
+// Stack will capture if captureStack option isn't off.
 func New(msg string, args ...any) error {
-	return newErr(context.Background(), msg, args...)
+	return newErr(context.Background(), msg, false, args...)
 }
 
 // NewCtx create new error.
 //
-// Stack will capture if captureStack option is used.
-// Fields from context will added to error if addField option is used.
+// Stack will capture if captureStack option isn't off.
+// Fields from context will added to error if EnableField option isn't off.
 func NewCtx(ctx context.Context, msg string, args ...any) error {
-	return newErr(ctx, msg, args...)
+	return newErr(ctx, msg,false, args...)
 }
 
-func newErr(ctx context.Context, msg string, args ...any) error {
+func newErr(ctx context.Context, msg string, skipMsg bool,  args ...any) error {
 	var (
 		causes []error
 
@@ -64,9 +64,18 @@ func newErr(ctx context.Context, msg string, args ...any) error {
 			return f
 		}(),
 		causes: causes,
-		msg:    fmt.Sprintf(msg, args...),
+		msg:    func() string {
+			if skipMsg{
+				return ""
+			}
+			return	fmt.Sprintf(msg, args...)
+		}(),
 		fields: FromCtx(ctx),
 	})
+}
+
+func Wrap(err error) error {
+	return newErr(context.Background(), "", true, err)
 }
 
 func applyHook(e *ExtendedError) error {
