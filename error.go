@@ -35,6 +35,31 @@ func NewCtx(ctx context.Context, msg string, args ...any) error {
 	return newErr(ctx, msg,false, args...)
 }
 
+func Wrap(err error) error {
+	return newErr(context.Background(), "", true, err)
+}
+
+func (e *ExtendedError) Unwrap() []error {
+	if len(e.causes) == 0 {
+		return nil
+	}
+
+	return e.causes
+}
+
+func (e *ExtendedError) Error() string {
+	return opts.printer.Print(e.msg, e.frames(), e.Fields())
+}
+
+func (e *ExtendedError) Fields() []Field {
+	return e.fields
+}
+
+func (e *ExtendedError) Stacktrace() string {
+	var buf = bufferpool.Get()
+	writeStack(buf, e.frames())
+	return buf.String()
+}
 func newErr(ctx context.Context, msg string, skipMsg bool,  args ...any) error {
 	var (
 		causes []error
@@ -74,38 +99,12 @@ func newErr(ctx context.Context, msg string, skipMsg bool,  args ...any) error {
 	})
 }
 
-func Wrap(err error) error {
-	return newErr(context.Background(), "", true, err)
-}
-
 func applyHook(e *ExtendedError) error {
 	if opts.hook == nil {
 		return e
 	}
 
 	return opts.hook(e)
-}
-
-func (e *ExtendedError) Unwrap() []error {
-	if len(e.causes) == 0 {
-		return nil
-	}
-
-	return e.causes
-}
-
-func (e *ExtendedError) Error() string {
-	return opts.printer.Print(e.msg, e.frames(), e.Fields())
-}
-
-func (e *ExtendedError) Fields() []Field {
-	return e.fields
-}
-
-func (e *ExtendedError) Stacktrace() string {
-	var buf = bufferpool.Get()
-	writeStack(buf, e.frames())
-	return buf.String()
 }
 
 func writeStack(buf *buffer.Buffer, stack []*stacktrace) {
