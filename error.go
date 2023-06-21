@@ -32,13 +32,15 @@ func New(msg string, args ...any) error {
 // Stack will capture if captureStack option isn't off.
 // Fields from context will added to error if EnableField option isn't off.
 func NewCtx(ctx context.Context, msg string, args ...any) error {
-	return newErr(ctx, msg,false, args...)
+	return newErr(ctx, msg, false, args...)
 }
 
+// Wrap create new error and added other error as cause.
 func Wrap(err error) error {
 	return newErr(context.Background(), "", true, err)
 }
 
+// Unwrap implement Unwrap interface from "errors" pkg.
 func (e *ExtendedError) Unwrap() []error {
 	if len(e.causes) == 0 {
 		return nil
@@ -47,20 +49,24 @@ func (e *ExtendedError) Unwrap() []error {
 	return e.causes
 }
 
+// Error implement Error interface from "errors" pkg.
 func (e *ExtendedError) Error() string {
 	return opts.printer.Print(e.msg, e.frames(), e.Fields())
 }
 
+// Fields return fields saved from context.
 func (e *ExtendedError) Fields() []Field {
 	return e.fields
 }
 
+// Stacktrace return stack as string.
 func (e *ExtendedError) Stacktrace() string {
 	var buf = bufferpool.Get()
 	writeStack(buf, e.frames())
 	return buf.String()
 }
-func newErr(ctx context.Context, msg string, skipMsg bool,  args ...any) error {
+
+func newErr(ctx context.Context, msg string, skipMsg bool, args ...any) error {
 	var (
 		causes []error
 
@@ -89,11 +95,11 @@ func newErr(ctx context.Context, msg string, skipMsg bool,  args ...any) error {
 			return f
 		}(),
 		causes: causes,
-		msg:    func() string {
-			if skipMsg{
+		msg: func() string {
+			if skipMsg {
 				return ""
 			}
-			return	fmt.Sprintf(msg, args...)
+			return fmt.Sprintf(msg, args...)
 		}(),
 		fields: FromCtx(ctx),
 	})

@@ -19,6 +19,7 @@ type (
 	}
 )
 
+// WithFields added field to context.
 func WithFields(ctx context.Context, fields ...Field) context.Context {
 	if len(fields) == 0 {
 		return ctx
@@ -35,6 +36,11 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 			return v.Key == f.Key
 		})
 		if j != -1 {
+			// skip copying if value not changed
+			if result[j].Value == f.Value {
+				continue
+			}
+
 			if !wasCopied {
 				tmp := make([]Field, len(result))
 				copy(tmp, result)
@@ -50,6 +56,7 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 	return context.WithValue(ctx, fieldsCtxKey, result)
 }
 
+// FromCtx extract field from context.
 func FromCtx(ctx context.Context) []Field {
 	fromCtx, _ := ctx.Value(fieldsCtxKey).([]Field)
 	return fromCtx
