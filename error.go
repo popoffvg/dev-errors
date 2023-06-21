@@ -40,6 +40,12 @@ func Wrap(err error) error {
 	return newErr(context.Background(), "", true, err)
 }
 
+// Wrap create new error and added other error as cause
+// and fields from context.
+func WrapCtx(ctx context.Context, err error) error {
+	return newErr(ctx, "", true, err)
+}
+
 // Unwrap implement Unwrap interface from "errors" pkg.
 func (e *ExtendedError) Unwrap() []error {
 	if len(e.causes) == 0 {
@@ -74,10 +80,13 @@ func newErr(ctx context.Context, msg string, skipMsg bool, args ...any) error {
 		causeWithStack = new(ExtendedError)
 	)
 
+	// supported %w verb: add error to cause and replace to %s verb
+	msg = strings.ReplaceAll(msg, "%w", "%s")
 	if opts.withStack {
-		for _, v := range args {
+		for i, v := range args {
 			if e, ok := v.(error); ok {
 				causes = append(causes, e)
+				args[i] = e.Error()
 				if !hasStack && errors.As(e, &causeWithStack) && causeWithStack.stack != nil {
 					hasStack = true
 				}
