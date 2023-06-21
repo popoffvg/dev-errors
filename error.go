@@ -74,10 +74,13 @@ func newErr(ctx context.Context, msg string, skipMsg bool, args ...any) error {
 		causeWithStack = new(ExtendedError)
 	)
 
+	// supported %w verb: add error to cause and replace to %s verb
+	msg = strings.ReplaceAll(msg, "%w", "%s")
 	if opts.withStack {
-		for _, v := range args {
+		for i, v := range args {
 			if e, ok := v.(error); ok {
 				causes = append(causes, e)
+				args[i] = e.Error()
 				if !hasStack && errors.As(e, &causeWithStack) && causeWithStack.stack != nil {
 					hasStack = true
 				}
