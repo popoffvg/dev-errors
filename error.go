@@ -22,9 +22,9 @@ type (
 
 // New create new error.
 //
-// Stack will capture if captureStack option isn't off.
+// Stack never capture. Fully compatible with standart library.
 func New(msg string, args ...any) error {
-	return newErr(context.Background(), msg, false, args...)
+	return newErr(context.Background(), msg, false, true, args...)
 }
 
 // NewCtx create new error.
@@ -32,18 +32,23 @@ func New(msg string, args ...any) error {
 // Stack will capture if captureStack option isn't off.
 // Fields from context will added to error if EnableField option isn't off.
 func NewCtx(ctx context.Context, msg string, args ...any) error {
-	return newErr(ctx, msg, false, args...)
+	return newErr(ctx, msg, false, false, args...)
 }
 
 // Wrap create new error and added other error as cause.
 func Wrap(err error) error {
-	return newErr(context.Background(), "", true, err)
+	return newErr(context.Background(), "", true, false, err)
+}
+
+// Wrap create new error and added other error as cause.
+func WrapMsg(err error, msg string) error {
+	return newErr(context.Background(), msg, true, false, err)
 }
 
 // Wrap create new error and added other error as cause
 // and fields from context.
 func WrapCtx(ctx context.Context, err error) error {
-	return newErr(ctx, "", true, err)
+	return newErr(ctx, "", true, false, err)
 }
 
 // Unwrap implement Unwrap interface from "errors" pkg.
@@ -72,7 +77,7 @@ func (e *ExtendedError) Stacktrace() string {
 	return buf.String()
 }
 
-func newErr(ctx context.Context, msg string, skipMsg bool, args ...any) error {
+func newErr(ctx context.Context, msg string, skipMsg bool, skipTrace bool, args ...any) error {
 	var (
 		causes []error
 
@@ -82,7 +87,7 @@ func newErr(ctx context.Context, msg string, skipMsg bool, args ...any) error {
 
 	// supported %w verb: add error to cause and replace to %s verb
 	msg = strings.ReplaceAll(msg, "%w", "%s")
-	if opts.withStack {
+	if opts.withStack && !skipTrace {
 		for i, v := range args {
 			if e, ok := v.(error); ok {
 				causes = append(causes, e)
@@ -106,7 +111,13 @@ func newErr(ctx context.Context, msg string, skipMsg bool, args ...any) error {
 		causes: causes,
 		msg: func() string {
 			if skipMsg {
-				return ""
+				buf := bufferpool.Get()
+				defer buf.Free()
+				for _, c := range causes {
+					buf.WriteString(c.Error())
+					buf.WriteString(";")
+				}
+				return buf.String()
 			}
 			return fmt.Sprintf(msg, args...)
 		}(),
