@@ -79,7 +79,7 @@ func (e *ExtendedError) Stacktrace() string {
 	return buf.String()
 }
 
-func newErr(ctx context.Context, fs fields, msg string, skipMsg bool, skipTrace bool, args ...any) error {
+func newErr(ctx context.Context, fs fields, msg string, isWrap bool, skipTrace bool, args ...any) error {
 	var (
 		causes []error
 
@@ -112,9 +112,13 @@ func newErr(ctx context.Context, fs fields, msg string, skipMsg bool, skipTrace 
 		}(),
 		causes: causes,
 		msg: func() string {
-			if skipMsg {
+			if isWrap {
 				buf := bufferpool.Get()
 				defer buf.Free()
+				switch {
+				case msg != "":
+					buf.WriteString(msg + ": ")
+				}
 				for _, c := range causes {
 					buf.WriteString(c.Error())
 					buf.WriteString(";")

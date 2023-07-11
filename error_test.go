@@ -27,7 +27,7 @@ func TestStackTraceDiscovery(t *testing.T) {
 	assert.Error(t, err)
 	var ext *ExtendedError
 	assert.True(t, As(err, &ext))
-	assert.Equal(t, "github.com/popoffvg/dev-errors.Call\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:50\ngithub.com/popoffvg/dev-errors.TestStackTraceDiscovery\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:22\ntesting.tRunner\n\t/usr/lib/go-1.20/src/testing/testing.go:1576", ext.Stacktrace())
+	assert.Equal(t, "github.com/popoffvg/dev-errors.WrapExtErr\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:58\ngithub.com/popoffvg/dev-errors.TestStackTraceDiscovery\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:20\ntesting.tRunner\n\t/usr/lib/go-1.20/src/testing/testing.go:1576", ext.Stacktrace())
 }
 
 func TestStackTraceUnion(t *testing.T) {
@@ -35,15 +35,15 @@ func TestStackTraceUnion(t *testing.T) {
 	assert.Error(t, err)
 	var ext *ExtendedError
 	assert.True(t, As(err, &ext))
-	assert.Equal(t, "github.com/popoffvg/dev-errors.Call\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:50\ngithub.com/popoffvg/dev-errors.MultiError\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:62\ngithub.com/popoffvg/dev-errors.TestStackTraceUnion\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:34\ntesting.tRunner\n\t/usr/lib/go-1.20/src/testing/testing.go:1576\n\n--------------------\n\ngithub.com/popoffvg/dev-errors.Call\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:50\ngithub.com/popoffvg/dev-errors.MultiError\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:62\ngithub.com/popoffvg/dev-errors.TestStackTraceUnion\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:34\ntesting.tRunner\n\t/usr/lib/go-1.20/src/testing/testing.go:1576", ext.Stacktrace())
+	assert.Equal(t, "github.com/popoffvg/dev-errors.MultiError\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:62\ngithub.com/popoffvg/dev-errors.TestStackTraceUnion\n\t/home/popoffvg/Documents/git/dev-errors/error_test.go:34\ntesting.tRunner\n\t/usr/lib/go-1.20/src/testing/testing.go:1576", ext.Stacktrace())
 }
 
 func TestWVerb(t *testing.T) {
 	oldErr := errors.New("old error")
-	err := New("test: %w", oldErr)
+	err := WrapMsg(oldErr, "test")
 	assert.True(t, Is(err, oldErr))
 
-	assert.Equal(t, "test: old error", err.Error())
+	assert.Equal(t, "test: old error;", err.Error())
 }
 
 func Call() error {
