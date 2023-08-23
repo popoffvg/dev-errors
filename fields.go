@@ -2,8 +2,6 @@ package errors
 
 import (
 	"context"
-
-	"golang.org/x/exp/slices"
 )
 
 type ctxKey uint8
@@ -25,32 +23,38 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 		return ctx
 	}
 
-	fs := FromCtx(ctx)
+	oldFields := FromCtx(ctx)
+	oldFieldIdxByKey := make(map[string]int, len(oldFields))
+	for idx, f := range oldFields {
+		oldFieldIdxByKey[f.Key] = idx
+	}
 
 	var (
 		wasCopied bool
-		result    = fs
+		result    = oldFields
 	)
-	for _, f := range fields {
-		j := slices.IndexFunc(result, func(v Field) bool {
-			return v.Key == f.Key
-		})
-		if j != -1 {
-			// skip copying if value not changed
-			if result[j].Value == f.Value {
-				continue
-			}
 
-			if !wasCopied {
-				tmp := make([]Field, len(result))
-				copy(tmp, result)
-				result = tmp
-			}
-			result[j] = f
+	for _, newField := range fields {
+		oldFieldIdx, ok := oldFieldIdxByKey[newField.Key]
+		if !ok {
+			result = append(result, newField)
 			continue
 		}
 
-		result = append(result, f)
+		oldField := oldFields[oldFieldIdx]
+		// skip copying if field not changed
+		if oldField == newField {
+			continue
+		}
+
+		if !wasCopied {
+			tmp := make([]Field, len(result))
+			copy(tmp, result)
+			result = tmp
+			wasCopied = true
+		}
+
+		result[oldFieldIdx] = newField
 	}
 
 	return context.WithValue(ctx, fieldsCtxKey, result)
