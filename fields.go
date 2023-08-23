@@ -59,7 +59,6 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 	}
 
 	// to give garanties that data will copy if slice will grow
-
 	result = slices.Clip(result)
 	return context.WithValue(ctx, fieldsCtxKey, result)
 }
