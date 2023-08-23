@@ -2,6 +2,7 @@ package errors
 
 import (
 	"context"
+	"golang.org/x/exp/slices"
 )
 
 type ctxKey uint8
@@ -24,10 +25,6 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 	}
 
 	oldFields := FromCtx(ctx)
-	oldFieldIdxByKey := make(map[string]int, len(oldFields))
-	for idx, f := range oldFields {
-		oldFieldIdxByKey[f.Key] = idx
-	}
 
 	var (
 		wasCopied bool
@@ -35,8 +32,11 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 	)
 
 	for _, newField := range fields {
-		oldFieldIdx, ok := oldFieldIdxByKey[newField.Key]
-		if !ok {
+		oldFieldIdx := slices.IndexFunc(result, func(f Field) bool {
+			return f.Key == newField.Key
+		})
+
+		if oldFieldIdx == -1 {
 			result = append(result, newField)
 			continue
 		}
