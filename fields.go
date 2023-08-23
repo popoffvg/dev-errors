@@ -2,6 +2,7 @@ package errors
 
 import (
 	"context"
+
 	"golang.org/x/exp/slices"
 )
 
@@ -57,6 +58,9 @@ func WithFields(ctx context.Context, fields ...Field) context.Context {
 		result[oldFieldIdx] = newField
 	}
 
+	// to give garanties that data will copy if slice will grow
+
+	result = slices.Clip(result)
 	return context.WithValue(ctx, fieldsCtxKey, result)
 }
 
